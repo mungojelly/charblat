@@ -23,9 +23,12 @@ def main(stdscr):
     stdscr.clear()
     pad = curses.newpad(PAD_HEIGHT, PAD_WIDTH)
     pad.nodelay(1)
-    for y in range(0, PAD_HEIGHT - 1):
-        for x in range(0, PAD_WIDTH - 1):
-            pad.addch(y, x, ord('a') + (x*x+y*y) % 26)
+    for y in range(0, PAD_HEIGHT):
+        for x in range(0, PAD_WIDTH):
+            if (y == PAD_HEIGHT - 1) and (x == PAD_WIDTH - 1):
+                pass  # don't trigger this curses bug
+            else:
+                pad.addch(y, x, ord('a') + (x*x+y*y) % 26)
     current_column = 0
     column_direction = 1
     current_row = 0
