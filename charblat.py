@@ -3,9 +3,9 @@ import time
 import random
 
 
-REFRESH_TIME = 0.23
-PAD_HEIGHT = 500
-PAD_WIDTH = 700
+REFRESH_TIME = 0.25
+PAD_HEIGHT = 200
+PAD_WIDTH = 300
 
 
 def twiddle(original, amount, minimum, maximum):
