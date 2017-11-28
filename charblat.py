@@ -16,6 +16,7 @@ MAX_STACK_LENGTH = 50
 MAX_INSTRUCTION_STACK_LENGTH = 20
 MAX_XY_STACK_LENGTH = 250
 MAX_CONTEXT_STACK_LENGTH = 120
+MAX_REMEMBERED_CHARACTERS = 200
 
 
 all_instructions = ['up', 'down', 'left', 'right',
@@ -55,6 +56,10 @@ all_instructions = ['up', 'down', 'left', 'right',
                     'push_context',
                     'pop_context',
                     'move_countdown',
+                    'remember_character',
+                    'forget_character',
+                    'recall_character',
+                    'advance_character_index',
 ]
 
 distributions = [
@@ -77,16 +82,21 @@ distributions = [
     ['move','move','go_left','go_right','up','down','push_context','pop_context',
      'put_a', 'put_m', 'move_if_m', 'put_i', 'i_to_j', 'put_c', 'skip_if_c',
      'h_if_low_energy', 'skip_eight_if_h', 'move_countdown', 'increase_counter',
-    ]
+    ],
+    ['go_up', 'go_down', 'go_left', 'go_right',
+     'move', 'move', 'move', 'move', 'move',
+     'move', 'move', 'move', 'move', 'move',
+     'put_a', 'put_b', 'put_c', 'skip_if_c',
+     'put_e', 'put_i', 'check_if_stack', 'skip_ten_if_g',
+     'push', 'pop', 'shuffle_stack', 'empty_stack',
+     'put_k', 'put_l', 'k_up_l_down',
+    ],
 ]
-
-
-
 
 
 def random_program():
     distribution = random.choice(distributions)
-    # distribution = all_instructions
+    distribution = all_instructions
     program = []
     for instruction in range(PROGRAM_LENGTH):
         program.append(random.choice(distribution))
@@ -357,6 +367,28 @@ def run_instruction(program, pad, context, energy):
             pass
         else:
             context = context.context_stack.pop()
+    if instruction == 'remember_character':
+        if len(context.remembered_characters) >= MAX_REMEMBERED_CHARACTERS:
+            pass
+        else:
+            context.remembered_characters = context.remembered_characters + \
+                                            [contents]
+    if instruction == 'forget_character':
+        if len(context.remembered_characters) == 0:
+            pass
+        else:
+            context.remembered_characters.pop()
+    if instruction == 'recall_character':
+        if len(context.remembered_characters) == 0:
+            pass
+        else:
+            pad.addch(context.y,
+                      context.x,
+                      context.remembered_characters[context.remembered_characters_index])
+    if instruction == 'advance_character_index':
+        context.remembered_characters_index += 1
+        if context.remembered_characters_index >= len(context.remembered_characters):
+            context.remembered_characters_index = 0
     context.current_instruction += 1
     return context
 
@@ -436,6 +468,8 @@ def main(stdscr):
         context.x_stack = []
         context.y_stack = []
         context.context_stack = []
+        context.remembered_characters = []
+        context.remembered_characters_index = 0
         run_program(current_program,
                     pad,
                     context,
