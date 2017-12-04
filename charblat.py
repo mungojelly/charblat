@@ -5,31 +5,48 @@ import random
 import sys
 
 
-GRID_WIDTH = 50
-GRID_HEIGHT = 20
+GRID_WIDTH = 100
+GRID_HEIGHT = 30
 DISPLAY_REFRESH_TIME = 0.05
-PROGRAM_REFRESH_TIME = 1.7
-PROGRAM_LENGTH = 300
+DISPLAY_REFRESH_VARIABILITY = 0.02
+PROGRAM_REFRESH_TIME = 5
+PROGRAM_LENGTH = 150
 NUMBER_OF_CHARACTERS = 126 - 33
-CHECK_BORINGNESS_TIME = 0.2
-BORING_CHARACTER_LIMIT = 78
-MAX_SKIP = 100
+CHECK_BORINGNESS_TIME = 0.5
+BORING_CHARACTER_LIMIT = 87
+MAX_SKIP = 10
 CHECK_LOCS_TOUCHED_TIME = 0.2
-MIN_LOCS_TOUCHED = 51
-MAX_LOCS_TOUCHED = 300
+MIN_LOCS_TOUCHED = 101
+MAX_LOCS_TOUCHED = 2000
 locs_touched = {}
-MORE_MOVEMENT = 3
+MORE_MOVEMENT = 10
+MORE_WRITING = 10
+CENTERINESS = 0
+JUMPINESS = 0
+CHAR_STACK_MAX_DEPTH = 100
+READINGNESS = 2000
+WRITINGNESS = 2000
+MORE_SPACES = 500
+INITIAL_MAX_MOVES = 5
+STACK_SWAPPINESS = 50
+SAMENESS_SAMPLE_SIZE = 200
+SAMENESS_SAMPLE_TIME = 0.5
+GLITCH_CHANCE = 1000
+MOVE_UNLESSES = 2
+LOC_STACK_MAX_DEPTH = 200
+REMEMBERINESS = 50
+RECALLINESS = 50
 
 CHARS = []
 for i in range(NUMBER_OF_CHARACTERS):
-    CHARS.append(ord('!') + i)
+    CHARS.append(ord(' ') + i)
 
 
 def reset_character_stats():
     global character_stats
     character_stats = {}
     for i in range(NUMBER_OF_CHARACTERS):
-        character_stats[ord('!') + i] = 0
+        character_stats[ord(' ') + i] = 0
 
 
 def most_used_character():
@@ -45,7 +62,7 @@ def empty_grid():
     for y in range(GRID_HEIGHT):
         row = []
         for x in range(GRID_WIDTH):
-            row.append(ord('!'))
+            row.append(ord(' '))
         grid.append(row)
     return grid
 
@@ -56,6 +73,9 @@ def empty_world():
     world['y'] = math.floor(GRID_HEIGHT / 2)
     world['x'] = math.floor(GRID_WIDTH / 2)
     world['skips'] = 0
+    world['char stack'] = []
+    world['max moves'] = INITIAL_MAX_MOVES
+    world['loc stack'] = []
     return world
 
 
@@ -75,32 +95,45 @@ def char_putter(char):
     return lambda world: char_put(world, char)
 
 
-for char in CHARS:
-    INSTRUCTIONS.append(char_putter(char))
+for _ in range(MORE_WRITING):
+    for char in CHARS:
+        INSTRUCTIONS.append(char_putter(char))
+
+
+for _ in range(MORE_SPACES):
+    INSTRUCTIONS.append(char_putter(ord(' ')))
 
 
 def north(world):
-    world['y'] -= 1
-    if world['y'] < 0:
-        world['y'] = GRID_HEIGHT - 1
+    if world['max moves'] > 0:
+        world['max moves'] -= 1
+        world['y'] -= 1
+        if world['y'] < 0:
+            world['y'] = GRID_HEIGHT - 1
 
 
 def south(world):
-    world['y'] += 1
-    if world['y'] > GRID_HEIGHT - 1:
-        world['y'] = 0
+    if world['max moves'] > 0:
+        world['max moves'] -= 1
+        world['y'] += 1
+        if world['y'] > GRID_HEIGHT - 1:
+            world['y'] = 0
 
 
 def west(world):
-    world['x'] -= 1
-    if world['x'] < 0:
-        world['x'] = GRID_WIDTH - 1
+    if world['max moves'] > 0:
+        world['max moves'] -= 1
+        world['x'] -= 1
+        if world['x'] < 0:
+            world['x'] = GRID_WIDTH - 1
 
 
 def east(world):
-    world['x'] += 1
-    if world['x'] > GRID_WIDTH - 1:
-        world['x'] = 0
+    if world['max moves'] > 0:
+        world['max moves'] -= 1
+        world['x'] += 1
+        if world['x'] > GRID_WIDTH - 1:
+            world['x'] = 0
 
 
 for _ in range(MORE_MOVEMENT):
@@ -108,6 +141,82 @@ for _ in range(MORE_MOVEMENT):
     INSTRUCTIONS.append(south)
     INSTRUCTIONS.append(east)
     INSTRUCTIONS.append(west)
+
+
+def north_unless(world, char):
+    target_y = world['y'] - 1
+    if target_y < 0:
+        target_y = GRID_HEIGHT - 1
+    target_x = world['x']
+    if world['grid'][target_y][target_x] == char:
+        pass
+    else:
+        north(world)
+
+
+def south_unless(world, char):
+    target_y = world['y'] + 1
+    if target_y > GRID_HEIGHT - 1:
+        target_y = 0
+    target_x = world['x']
+    if world['grid'][target_y][target_x] == char:
+        pass
+    else:
+        south(world)
+
+
+def east_unless(world, char):
+    target_x = world['x'] + 1
+    if target_x > GRID_WIDTH - 1:
+        target_x = 0
+    target_y = world['y']
+    if world['grid'][target_y][target_x] == char:
+        pass
+    else:
+        east(world)
+
+
+def west_unless(world, char):
+    target_x = world['x'] - 1
+    if target_x < 0:
+        target_x = GRID_WIDTH - 1
+    target_y = world['y']
+    if world['grid'][target_y][target_x] == char:
+        pass
+    else:
+        west(world)
+
+
+for _ in range(MOVE_UNLESSES):
+    for char in CHARS:
+        INSTRUCTIONS.append(lambda world: north_unless(world, char))
+        INSTRUCTIONS.append(lambda world: south_unless(world, char))
+        INSTRUCTIONS.append(lambda world: east_unless(world, char))
+        INSTRUCTIONS.append(lambda world: west_unless(world, char))
+
+
+def slightly_towards_center(world):
+    vertical_center = math.floor(GRID_HEIGHT / 2)
+    horizontal_center = math.floor(GRID_WIDTH / 2)
+    vertical_average = (vertical_center + (world['y'] * 3)) / 4
+    horizontal_average = (horizontal_center + (world['x'] * 3)) / 4
+    world['y'] = math.floor(vertical_average)
+    world['x'] = math.floor(horizontal_average)
+
+
+for _ in range(CENTERINESS):
+    INSTRUCTIONS.append(slightly_towards_center)
+
+
+def random_jump(world):
+    if world['max moves'] > 0:
+        world['max moves'] -= 1
+        world['y'] = random.randint(0, GRID_HEIGHT - 1)
+        world['x'] = random.randint(0, GRID_WIDTH - 1)
+
+
+for _ in range(JUMPINESS):
+    INSTRUCTIONS.append(random_jump)
 
 
 def skip_if(world, char, skips):
@@ -122,6 +231,62 @@ def skipper(char, skips):
 for skips in range(MAX_SKIP):
     for char in CHARS:
         INSTRUCTIONS.append(skipper(char, skips))
+
+
+def read_char(world):
+    world['char stack'].append(world['grid'][world['y']][world['x']])
+    while len(world['char stack']) > CHAR_STACK_MAX_DEPTH:
+        world['char stack'] = world['char stack'][1:]
+
+
+for _ in range(READINGNESS):
+    INSTRUCTIONS.append(read_char)
+
+
+def write_char(world):
+    if len(world['char stack']) == 0:
+        pass
+    else:
+        world['grid'][world['y']][world['x']] = world['char stack'].pop()
+
+
+for _ in range(WRITINGNESS):
+    INSTRUCTIONS.append(write_char)
+
+
+def remember_loc(world):
+    world['loc stack'].append((world['y'], world['x']))
+    while len(world['loc stack']) > LOC_STACK_MAX_DEPTH:
+        world['loc stack'] = world['loc stack'][1:]
+
+
+for _ in range(REMEMBERINESS):
+    INSTRUCTIONS.append(remember_loc)
+
+
+def recall_loc(world):
+    if len(world['loc stack']) == 0:
+        pass
+    else:
+        new_loc = world['loc stack'].pop()
+        world['y'] = new_loc[0]
+        world['x'] = new_loc[1]
+
+
+for _ in range(RECALLINESS):
+    INSTRUCTIONS.append(recall_loc)
+
+
+def swap_top_two_char_stack(world):
+    if len(world['char stack']) > 1:
+        first = world['char stack'].pop()
+        second = world['char stack'].pop()
+        world['char stack'].append(first)
+        world['char stack'].append(second)
+
+
+for _ in range(STACK_SWAPPINESS):
+    INSTRUCTIONS.append(swap_top_two_char_stack)
 
 
 def random_code():
@@ -139,6 +304,7 @@ def random_program():
 
 
 def run_program(program, world):
+    world['max moves'] = INITIAL_MAX_MOVES
     char_under_cursor = world['grid'][world['y']][world['x']]
     character_stats[char_under_cursor] += 1
 #    print(character_stats, file=sys.stderr)
@@ -157,7 +323,7 @@ def main(stdscr):
     world = empty_world()
     gridmaxy = len(world['grid'])
     gridmaxx = len(world['grid'][0])
-    display_refreshed = time.time()
+    refresh_display = time.time()
     program = random_program()
     program_refreshed = time.time()
     boringness_checked = time.time()
@@ -165,7 +331,12 @@ def main(stdscr):
     global locs_touched
     locs_touched = {}
     locs_touched_checked = time.time()
+    sameness_sampled = time.time()
+    sameness_sample = {}
     while True:
+        if random.randint(0, GLITCH_CHANCE) == 0:
+            glitcher = random.choice(INSTRUCTIONS)
+            glitcher(world)
         run_program(program, world)
         if time.time() > (program_refreshed + PROGRAM_REFRESH_TIME):
             program_refreshed = time.time()
@@ -192,8 +363,24 @@ def main(stdscr):
 #            else:
 #                print("{}, interesting".format(len(locs_touched)), file=sys.stderr)
             locs_touched = {}
-        if time.time() > (display_refreshed + DISPLAY_REFRESH_TIME):
-            display_refreshed = time.time()
+        if time.time() > (sameness_sampled + SAMENESS_SAMPLE_TIME):
+            sameness_sampled = time.time()
+            sameness = True
+            for sample in sameness_sample.keys():
+                if world['grid'][sample[0]][sample[1]] != sameness_sample[sample]:
+                    sameness = False
+#            print(sameness, file=sys.stderr)
+            if sameness:
+                program[most_used_character()] = random_code()
+                reset_character_stats()
+            sameness_sample = {}
+            for sample in range(SAMENESS_SAMPLE_SIZE):
+                target = (random.randint(0, GRID_HEIGHT - 1),
+                          random.randint(0, GRID_WIDTH - 1))
+                sameness_sample[target] = world['grid'][target[0]][target[1]]
+        if time.time() > refresh_display:
+            refresh_display = time.time() + DISPLAY_REFRESH_TIME + \
+                              (random.random() * DISPLAY_REFRESH_VARIABILITY)
             (maxy, maxx) = stdscr.getmaxyx()
             for y in range(0, maxy):
                 for x in range(0, maxx):
