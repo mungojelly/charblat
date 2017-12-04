@@ -11,16 +11,20 @@ GRID_HEIGHT = 30
 DISPLAY_REFRESH_TIME = 0.05
 DISPLAY_REFRESH_VARIABILITY = 0.02
 
-PROGRAM_REFRESH_TIME = 2
+PROGRAM_REFRESH_TIME = 7
 
-PROGRAM_LENGTH = 100
-INITIAL_ENERGY = 200
+PROGRAM_LENGTH = 1000
+CODE_LENGTH = 50
+
+INITIAL_ENERGY = 5000
+LOW_ENERGY = 1000
 
 MORE_DRAWING = 2
-MORE_SPACES = 70
+MORE_SPACES = 50
 MORE_MOVEMENT = 20
 
 NUMBER_OF_CHARACTERS = 126 - 33
+#NUMBER_OF_CHARACTERS = 20
 
 CHARS = []
 for i in range(NUMBER_OF_CHARACTERS):
@@ -97,18 +101,79 @@ for _ in range(MORE_MOVEMENT):
     INSTRUCTIONS.append(west)
 
 
+CONDITIONS = []
+
+
+def is_energy_low(world):
+    return world['energy'] < LOW_ENERGY
+
+
+CONDITIONS.append(is_energy_low)
+
+
+def is_energy_high(world):
+    return world['energy'] > LOW_ENERGY
+
+
+CONDITIONS.append(is_energy_high)
+
+
+def is_char_under_cursor(char, world):
+    return world['grid'][world['y']][world['x']] == char
+
+
+for char in CHARS:
+    CONDITIONS.append(lambda world: is_char_under_cursor(char, world))
+
+
+def is_y_zero(world):
+    return world['y'] == 0
+
+
+CONDITIONS.append(is_y_zero)
+
+
+def is_x_zero(world):
+    return world['x'] == 0
+
+
+CONDITIONS.append(is_x_zero)
+
+
 def random_code():
     code = []
-    for instruction in range(PROGRAM_LENGTH):
+    for _ in range(CODE_LENGTH):
         code.append(random.choice(INSTRUCTIONS))
     return code
 
 
+def random_program():
+    program = []
+    for _ in range(PROGRAM_LENGTH):
+        routine = {}
+        routine['condition'] = random.choice(CONDITIONS)
+        routine['code'] = random_code()
+        program.append(routine)
+    return program
+
+
+def run_routine(routine, world):
+    condition = routine['condition']
+    while world['energy'] > 0:
+        print(world['energy'], file=sys.stderr)
+        world['energy'] -= 1
+        if condition(world):
+            print("hi", file=sys.stderr)
+            for instruction in routine['code']:
+                instruction(world)
+        else:
+            break
+
+
 def run_program(program, world):
-    world['energy'] = INITIAL_ENERGY
-    for instruction in program:
+    for routine in program:
         if world['energy'] > 0:
-            instruction(world)
+            run_routine(routine, world)
         else:
             break
 
@@ -121,13 +186,15 @@ def main(stdscr):
     gridmaxy = len(world['grid'])
     gridmaxx = len(world['grid'][0])
     refresh_display = time.time()
-    program = random_code()
+    program = random_program()
     program_refreshed = time.time()
     while True:
-        run_program(program, world)
+        world['energy'] = INITIAL_ENERGY
+        while world['energy'] > 0:
+            run_program(program, world)
         if time.time() > (program_refreshed + PROGRAM_REFRESH_TIME):
             program_refreshed = time.time()
-            program = random_code()
+            program = random_program()
         if time.time() > refresh_display:
             refresh_display = time.time() + DISPLAY_REFRESH_TIME + \
                               (random.random() * DISPLAY_REFRESH_VARIABILITY)
@@ -142,7 +209,7 @@ def main(stdscr):
             c = stdscr.getch()
             if c == ord('q'):
                 break
-        time.sleep(0.01)
+        time.sleep(0.001)
 
 
 if __name__ == "__main__":
