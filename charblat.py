@@ -5,8 +5,8 @@ import random
 import sys
 
 
-GRID_WIDTH = 100
-GRID_HEIGHT = 30
+GRID_WIDTH = 1000
+GRID_HEIGHT = 100
 
 DISPLAY_REFRESH_TIME = 0.05
 DISPLAY_REFRESH_VARIABILITY = 0.02
@@ -71,28 +71,80 @@ for _ in range(MORE_SPACES):
     INSTRUCTIONS.append(char_putter(ord(' ')))
 
 
+def north_of(yx):
+    y = yx[0]
+    x = yx[1]
+    y -= 1
+    if y < 0:
+        y = GRID_HEIGHT - 1
+    return (y, x)
+
+
+def south_of(yx):
+    y = yx[0]
+    x = yx[1]
+    y += 1
+    if y > GRID_HEIGHT - 1:
+        y = 0
+    return (y, x)
+
+
+def east_of(yx):
+    y = yx[0]
+    x = yx[1]
+    x += 1
+    if x > GRID_WIDTH - 1:
+        x = 0
+    return (y, x)
+
+
+def west_of(yx):
+    y = yx[0]
+    x = yx[1]
+    x -= 1
+    if x < 0:
+        x = GRID_WIDTH - 1
+    return (y, x)
+
+
 def north(world):
-    world['y'] -= 1
-    if world['y'] < 0:
-        world['y'] = GRID_HEIGHT - 1
+    (world['y'], world['x']) = north_of((world['y'], world['x']))
+    return world
 
 
 def south(world):
-    world['y'] += 1
-    if world['y'] > GRID_HEIGHT - 1:
-        world['y'] = 0
-
-
-def west(world):
-    world['x'] -= 1
-    if world['x'] < 0:
-        world['x'] = GRID_WIDTH - 1
+    (world['y'], world['x']) = south_of((world['y'], world['x']))
+    return world
 
 
 def east(world):
-    world['x'] += 1
-    if world['x'] > GRID_WIDTH - 1:
-        world['x'] = 0
+    (world['y'], world['x']) = east_of((world['y'], world['x']))
+    return world
+
+
+def west(world):
+    (world['y'], world['x']) = west_of((world['y'], world['x']))
+    return world
+
+
+def northeast(world):
+    north(east(world))
+    return world
+
+
+def northwest(world):
+    north(west(world))
+    return world
+
+
+def southeast(world):
+    south(east(world))
+    return world
+
+
+def southwest(world):
+    south(west(world))
+    return world
 
 
 for _ in range(MORE_MOVEMENT):
@@ -100,6 +152,10 @@ for _ in range(MORE_MOVEMENT):
     INSTRUCTIONS.append(south)
     INSTRUCTIONS.append(east)
     INSTRUCTIONS.append(west)
+    INSTRUCTIONS.append(northeast)
+    INSTRUCTIONS.append(northwest)
+    INSTRUCTIONS.append(southeast)
+    INSTRUCTIONS.append(southwest)
 
 
 CONDITIONS = []
@@ -161,7 +217,6 @@ def random_program():
 def run_routine(routine, world):
     condition = routine['condition']
     while world['energy'] > 0:
-        print(world['energy'], file=sys.stderr)
         world['energy'] -= 1
         if condition(world):
             print("hi", file=sys.stderr)
