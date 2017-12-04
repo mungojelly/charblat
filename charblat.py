@@ -13,13 +13,14 @@ DISPLAY_REFRESH_VARIABILITY = 0.02
 
 PROGRAM_REFRESH_TIME = 7
 
-PROGRAM_LENGTH = 1000
-CODE_LENGTH = 50
+NUMBER_OF_PROGRAMS = 3
+PROGRAM_LENGTH = 2000
+CODE_LENGTH = 25
 
-INITIAL_ENERGY = 5000
-LOW_ENERGY = 1000
+INITIAL_ENERGY = 2000
+LOW_ENERGY = 200
 
-MORE_DRAWING = 2
+MORE_DRAWING = 1
 MORE_SPACES = 50
 MORE_MOVEMENT = 20
 
@@ -186,15 +187,18 @@ def main(stdscr):
     gridmaxy = len(world['grid'])
     gridmaxx = len(world['grid'][0])
     refresh_display = time.time()
-    program = random_program()
+    programs = []
+    for _ in range(NUMBER_OF_PROGRAMS):
+        programs.append(random_program())
     program_refreshed = time.time()
     while True:
-        world['energy'] = INITIAL_ENERGY
-        while world['energy'] > 0:
-            run_program(program, world)
+        for program in programs:
+            world['energy'] = INITIAL_ENERGY
+            while world['energy'] > 0:
+                run_program(program, world)
         if time.time() > (program_refreshed + PROGRAM_REFRESH_TIME):
             program_refreshed = time.time()
-            program = random_program()
+            programs[random.randint(0, len(programs) - 1)] = random_program()
         if time.time() > refresh_display:
             refresh_display = time.time() + DISPLAY_REFRESH_TIME + \
                               (random.random() * DISPLAY_REFRESH_VARIABILITY)
@@ -209,7 +213,7 @@ def main(stdscr):
             c = stdscr.getch()
             if c == ord('q'):
                 break
-        time.sleep(0.001)
+        time.sleep(0.01)
 
 
 if __name__ == "__main__":
